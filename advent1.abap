@@ -12,6 +12,8 @@ TYPES tt_input TYPE TABLE OF string WITH EMPTY KEY.
 DATA: lt_filetable TYPE filetable.
 DATA: lv_rc        TYPE i.
 DATA: lt_input     TYPE tt_input.
+DATA: start        TYPE timestampl.
+DATA: ende         TYPE timestampl.
 
 cl_gui_frontend_services=>file_open_dialog(
     CHANGING
@@ -26,9 +28,19 @@ LOOP AT lt_filetable REFERENCE INTO DATA(lr_filetable).
     CHANGING
       data_tab = lt_input ).
 
-  WRITE reduce i( init lv_summe = 0
-                  for <ls_input> in lt_input
-                  next lv_summe = lv_summe + conv i( concat_lines_of( table = value tt_input( ( substring_from( val = <ls_input> regex = '[0-9]' len = 1 ) )
-                                                                                              ( substring_from( val = <ls_input> regex = '[0-9]' occ = count( val = <ls_input> regex = '[0-9]' ) len = 1 ) ) ) ) ) ).
+
+  GET TIME STAMP FIELD start.
+
+  DO 1000 TIMES.
+    DATA(lv_result) = REDUCE i( INIT lv_summe = 0
+                               FOR <ls_input> IN lt_input
+                               NEXT lv_summe = lv_summe + CONV i( concat_lines_of( table = VALUE tt_input( ( substring_from( val = <ls_input> regex = '[1-9]' len = 1 ) )
+                                                                                                           ( substring_from( val = <ls_input> regex = '[1-9]' occ = count( val = <ls_input> regex = '[1-9]' ) len = 1 ) ) ) ) ) ).
+
+  ENDDO.
+
+  GET TIME STAMP FIELD ende.
+
+  WRITE: |{ lv_result } IN { EXACT #( ( ( ende - start ) / 1000 ) ) } SECONDS |.
 
 ENDLOOP.

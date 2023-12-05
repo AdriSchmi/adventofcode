@@ -34,29 +34,22 @@ LOOP AT lt_filetable REFERENCE INTO DATA(lr_filetable).
 
   DATA(lt_split) = VALUE tt_input( ).
   SPLIT lt_input[ 1 ] AT space INTO TABLE lt_split.
-  DATA(lt_map) = VALUE tt_map( ).
 
-  LOOP AT lt_split REFERENCE INTO DATA(lr_split).
-    IF sy-tabix MOD 2 EQ 0.
-      DO lt_split[ sy-tabix + 1 ] TIMES.
-        APPEND VALUE #( seed = lr_split->* + ( sy-index - 1 ) ) TO lt_map.
-      ENDDO.
-    ENDIF.
-  ENDLOOP.
+  DATA(lv_result) = ||.
 
-  LOOP AT lt_map REFERENCE INTO DATA(lr_map).
-    lr_map->result = lr_map->seed.
+  LOOP AT VALUE tt_input( FOR i = 1 THEN i + 1 WHILE i <= lines( lt_split ) DIV 2
+                        ( LINES OF VALUE #( FOR j = 0 THEN j + 1 WHILE j < lt_split[ ( i * 2 ) + 1 ]
+                                          ( lt_split[ i * 2 ] + j ) ) ) ) REFERENCE INTO DATA(lr_seed).
+    
     DATA(lv_found) = abap_false.
 
     LOOP AT lt_input REFERENCE INTO DATA(lr_input) FROM 2.
-
       IF lr_input->* CA '0123456789'.
         IF lv_found EQ abap_false.
           SPLIT lr_input->* AT space INTO DATA(lv_dest_start) DATA(lv_source_start) DATA(lv_range).
-          DATA(lv_source_ende) = lv_source_start + lv_range - 1.
 
-          IF lr_map->result BETWEEN lv_source_start AND lv_source_ende.
-            lr_map->result = ( lr_map->result - lv_source_start ) + lv_dest_start.
+          IF lr_seed->* BETWEEN lv_source_start AND EXACT #( lv_source_start + lv_range - 1 ).
+            lr_seed->* = ( lr_seed->* - lv_source_start ) + lv_dest_start.
             lv_found = abap_true.
           ENDIF.
         ENDIF.
@@ -65,9 +58,9 @@ LOOP AT lt_filetable REFERENCE INTO DATA(lr_filetable).
       ENDIF.
     ENDLOOP.
 
+    lv_result = COND #( WHEN lr_seed->* <= lv_result OR lv_result IS INITIAL THEN lr_seed->* ELSE lv_result ).
+
   ENDLOOP.
 
-  SORT lt_map BY result ASCENDING.
-  WRITE / lt_map[ 1 ]-result.
-
+  WRITE lv_result.
 ENDLOOP.
